@@ -8,10 +8,10 @@ Just a simple blocking client that expects exactly one response for exactly one 
 
 Example: 
   client = NuRemote::Client.new("localhost")
-  client.send("(set main [[[UIApplication sharedApplication] delegate] main])")
+  client.send("(set main [[[UIApplication sharedApplication] delegate] description])")
   response = client.receive
   # or 
-  response = client.nu("(set main [[[UIApplication sharedApplication] delegate] main])")
+  response = client.nu("(set main [[[UIApplication sharedApplication] delegate] description])")
   puts "#{response.code} #{response.status}: #{response.body}"
 
 =end
@@ -43,12 +43,13 @@ module NuRemote
     end
     
     def _receive_packet
-      # Read all available data
+      # Read a whole packet
       buffer = ""
       begin
         data = @socket.recv(1024)
         buffer << data
       rescue
+        # Fake returned error
         buffer = "1000 InternalError\t\n\n"
       end while !buffer.end_with?(@terminator)
       buffer
@@ -59,6 +60,10 @@ module NuRemote
       header, body = packet.split("\t", 2)
       code, status = header.split(' ')
       [code.to_i, status, body.strip]
+    end
+    
+    def close
+      @socket.close
     end
     
     # Returns hash of [:code => Number, :status => String, :body => String]
