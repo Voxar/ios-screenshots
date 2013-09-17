@@ -1,40 +1,63 @@
-class Defaults
-  def initialize(domain)
-    @domain = domain
-  end
-  
-  class DefaultsError < RuntimeError; end
-  
-  def get key
-    ArgumentError.new key unless key and key.length != 0
-    cmd = "defaults read #{@domain} #{key}"
-    proc = IO.popen(cmd)
-    output = proc.read.strip
-    proc.close
-    raise DefaultsError.new("#{$?}: #{cmd}") if $?.to_i != 0
-    output
-  end
-  
-  def set key, value
-    args = value
-    case value
-    when Array
-      args = "-array #{value.join(" ")}"
-    when String
-      args = "-string #{value}"
-    else
-      raise RuntimeError.new("Don't know how to transform #{value.class}")
-    end
-    cmd = "defaults write #{@domain} #{key} #{args}"
-    raise RuntimeError.new("failed #{cmd}") unless system(cmd)
-  end
-end
+=begin
+ start_app launch the simulator with an application
+  arguments
+    required
+      app_path            # Path to iOS .app bundle
+    options
+      :iphone or :ipad      # Select device family, default is :iphone
+      :retina               # Run retina simulator. default is not :retina
+      :tall                 # 4-inch iphone (implies :retina) (Does nothing together with :ipad). default is not :tall
+      :sdk => "x.y"         # Select sdk version. You must have the selected sdk installed in your `xcode-select --print-path`. default is latest sdk
 
+  Example
+    sim = Simulator.new
+    sim.terminate          # Make sure no instances are already running (sim needs to be restarted when selecting locale)
+    sim.locale = sim.available_locales.last                 # Select a locale
+    sim.start_app APP_PATH, :ipad, :retina, :sdk => "6.1"   # Start iPad Retina simulator running iOS 6.1
+    sim.rotate_right       # Put simulator in landscape mode
+    sleep 15               # Need to wait a bit for simulator to start, install the app bundle, and start the app
+    sim.save_screenshot "screenshot.png"     # Save a screenshot
+    sim.terminate
+=end
 class Simulator
   # Find some paths
   LOCAL_PATH = File.split(__FILE__).first
   PNGPASTE_PATH = File.expand_path(File.join(LOCAL_PATH, "bin", "pngpaste"))
   
+  # Helper class to interface with osx defaults. There might be a better way.
+  class Defaults
+    def initialize(domain)
+      @domain = domain
+    end
+  
+    class DefaultsError < RuntimeError; end
+  
+    def get key
+      ArgumentError.new key unless key and key.length != 0
+      cmd = "defaults read #{@domain} #{key}"
+      proc = IO.popen(cmd)
+      output = proc.read.strip
+      proc.close
+      raise DefaultsError.new("#{$?}: #{cmd}") if $?.to_i != 0
+      output
+    end
+  
+    def set key, value
+      args = value
+      case value
+      when Array
+        args = "-array #{value.join(" ")}"
+      when String
+        args = "-string #{value}"
+      else
+        raise RuntimeError.new("Don't know how to transform #{value.class}")
+      end
+      cmd = "defaults write #{@domain} #{key} #{args}"
+      raise RuntimeError.new("failed #{cmd}") unless system(cmd)
+    end
+  end
+  
+  # Wraps ios-sim
   class IOSSim
     # Available args and defaults:
     # :app => nil [just start simulator] # Path to app to start
@@ -50,7 +73,7 @@ class Simulator
       args << 'start' unless opts[:app]
       args << 'launch' if opts[:app]
       args << opts[:app] if opts[:app]
-      args << '--retina' if opts[:retina]
+      args << '--retina' if opts[:retina] || opts[:tall]
       args << '--tall' if opts[:tall]
       args << ["--family", "#{opts[:family]}"] if opts[:family]
       args << ["--sdk", opts[:sdk]] if opts[:sdk]
@@ -187,7 +210,9 @@ class Simulator
   end
   
   alias_method :save_screenshot, :save_snapshot
-  
+end
+
+class Simulator # Add some useful scripts
   def rotate_left
     _applescript 'tell application "System Events"
       tell process "iOS Simulator"
