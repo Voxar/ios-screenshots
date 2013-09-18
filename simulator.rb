@@ -22,7 +22,7 @@
 class Simulator
   # Find some paths
   LOCAL_PATH = File.split(__FILE__).first
-  PNGPASTE_PATH = File.expand_path(File.join(LOCAL_PATH, "bin", "pngpaste"))
+  PNGPASTE_PATH = File.expand_path(File.join(LOCAL_PATH, 'bin', 'pngpaste', 'pngpaste'))
   
   # Helper class to interface with osx defaults. There might be a better way.
   class Defaults
@@ -67,7 +67,7 @@ class Simulator
     # :sdk => nil  [latest]      # or string version number, example "6.1" or "7.0"
     # :wait => true              # Will block until simulator is closed
     # :args => ['list', 'of']    # Array of strings to pass to the simulator
-    IOS_SIM_PATH = File.expand_path(File.join(LOCAL_PATH, "bin", "ios-sim"))
+    IOS_SIM_PATH = File.expand_path(File.join(LOCAL_PATH, 'bin', 'ios-sim', 'ios-sim'))
     def launch opts = {}
       args = [IOS_SIM_PATH]
       args << 'start' unless opts[:app]
